@@ -619,10 +619,15 @@
             
             if (!confirm('Are you sure you want to approve this request?')) return;
             
+            console.log('Approve confirmed, starting...');
+            console.log('Selected request:', selectedRequest);
+            console.log('Current user:', currentUser);
+            
             showLoading();
             closeModal();
             
             try {
+                console.log('Calling approveRequest API...');
                 const response = await apiCall('approveRequest', {
                     requestID: selectedRequest.requestID,
                     department: currentUser.department,
@@ -630,14 +635,17 @@
                     comments: comments
                 });
                 
+                console.log('Approve response:', response);
+                
                 if (response.success) {
                     showToast('Request approved successfully!', 'success');
                     loadPendingApprovals();
                 } else {
-                    showToast('Error approving request', 'error');
+                    showToast('Error approving request: ' + response.message, 'error');
                 }
             } catch (error) {
-                showToast('Connection error', 'error');
+                console.error('Approve error:', error);
+                showToast('Connection error: ' + error.message, 'error');
             } finally {
                 hideLoading();
             }
