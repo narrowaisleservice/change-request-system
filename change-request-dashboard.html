@@ -231,12 +231,24 @@
         }
         
         async function apiCall(action, params = {}) {
-            const url = new URL(API_URL);
-            url.searchParams.append('action', action);
-            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-            const response = await fetch(url.toString());
-            if (!response.ok) throw new Error('Network error');
-            return await response.json();
+            try {
+                const url = new URL(API_URL);
+                url.searchParams.append('action', action);
+                url.searchParams.append('_t', Date.now()); // Cache buster
+                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+                console.log('API Call:', url.toString());
+                const response = await fetch(url.toString());
+                if (!response.ok) {
+                    console.error('Response not OK:', response.status, response.statusText);
+                    throw new Error('Network error: ' + response.status);
+                }
+                const data = await response.json();
+                console.log('API Response:', data);
+                return data;
+            } catch (error) {
+                console.error('API Call Error:', error);
+                throw error;
+            }
         }
         
         async function handleLogin(event) {
