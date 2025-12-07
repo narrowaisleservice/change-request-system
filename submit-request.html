@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Change Request - Narrow Aisle</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); min-height: 100vh; }
+        
+        .loading { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+        .loading.active { display: flex; }
+        .spinner { width: 60px; height: 60px; border: 4px solid #f3f3f3; border-top: 4px solid #8B0000; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: white; margin-top: 20px; font-size: 1.2em; }
+        
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        .header { background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); color: white; padding: 30px; border-radius: 16px; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid #3d3d3d; text-align: center; }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header .subtitle { color: #b0b0b0; font-size: 1.1em; }
+        
+        .login-screen { display: block; }
+        .login-screen.hidden { display: none; }
+        .login-box { background: #2d2d2d; padding: 40px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid #3d3d3d; }
+        
+        .form-screen { display: none; }
+        .form-screen.active { display: block; }
+        .form-box { background: #2d2d2d; padding: 40px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid #3d3d3d; }
+        
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; color: #e0e0e0; font-weight: 600; margin-bottom: 10px; font-size: 1em; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 14px; border: 2px solid #3d3d3d; border-radius: 8px; font-size: 1em; background: #1a1a1a; color: #ffffff; transition: all 0.3s; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #8B0000; box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.2); }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+        
+        .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, #8B0000 0%, #B22222 100%); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 0, 0, 0.4); }
+        .btn-primary:disabled { background: #555; cursor: not-allowed; transform: none; }
+        
+        .error-message { background: #e74c3c; color: white; padding: 12px; border-radius: 8px; margin-bottom: 20px; display: none; text-align: center; }
+        .error-message.show { display: block; }
+        
+        .success-screen { display: none; }
+        .success-screen.active { display: block; }
+        .success-banner { background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; padding: 40px; border-radius: 16px; text-align: center; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(39, 174, 96, 0.3); }
+        .success-banner h2 { font-size: 2.5em; margin-bottom: 15px; }
+        .success-icon { font-size: 4em; margin-bottom: 20px; }
+        
+        .info-card { background: #2d2d2d; padding: 30px; border-radius: 12px; border: 1px solid #3d3d3d; margin-bottom: 30px; }
+        .info-card h3 { color: #8B0000; margin-bottom: 15px; font-size: 1.5em; }
+        .info-row { display: grid; grid-template-columns: 150px 1fr; gap: 10px; margin-bottom: 10px; padding: 10px 0; border-bottom: 1px solid #3d3d3d; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #b0b0b0; font-weight: 600; }
+        .info-value { color: #ffffff; }
+        
+        .btn-new { padding: 16px 40px; background: linear-gradient(135deg, #8B0000 0%, #B22222 100%); color: white; border: none; border-radius: 12px; font-size: 1.1em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-new:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 0, 0, 0.4); }
+        
+        .required::after { content: ' *'; color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing...</div>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>📝 Change Request</h1>
+            <p class="subtitle">Submit New Request</p>
+        </div>
+        
+        <!-- Login Screen -->
+        <div class="login-screen" id="loginScreen">
+            <div class="login-box">
+                <h2 style="color: #ffffff; margin-bottom: 25px; text-align: center;">Sales Rep Login</h2>
+                <div class="error-message" id="loginError"></div>
+                <form id="loginForm" onsubmit="return handleLogin(event)">
+                    <div class="form-group">
+                        <label for="usernameInput">Username</label>
+                        <input type="text" id="usernameInput" placeholder="Enter your username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pinInput">PIN Code</label>
+                        <input type="password" id="pinInput" placeholder="Enter your PIN" required maxlength="4" pattern="[0-9]{4}">
+                    </div>
+                    <button type="submit" class="btn-primary">Login</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Request Form Screen -->
+        <div class="form-screen" id="formScreen">
+            <div class="form-box">
+                <h2 style="color: #ffffff; margin-bottom: 10px;">Submit Change Request</h2>
+                <p style="color: #b0b0b0; margin-bottom: 25px;">Logged in as: <strong id="loggedInUser"></strong></p>
+                
+                <form id="requestForm" onsubmit="return handleSubmit(event)">
+                    <h3 style="color: #8B0000; margin-bottom: 15px;">Customer Information</h3>
+                    
+                    <div class="form-group">
+                        <label for="customerName" class="required">Customer Name</label>
+                        <input type="text" id="customerName" placeholder="Enter customer name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customerAddress" class="required">Customer Address/Site</label>
+                        <textarea id="customerAddress" placeholder="Enter customer address or site location" required></textarea>
+                    </div>
+                    
+                    <h3 style="color: #8B0000; margin: 30px 0 15px;">Truck Information</h3>
+                    
+                    <div class="form-group">
+                        <label for="truckModel" class="required">Truck Model/Type</label>
+                        <input type="text" id="truckModel" placeholder="e.g., Model X, Forklift Type A" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="serialNumber">Serial Number (if known)</label>
+                        <input type="text" id="serialNumber" placeholder="Enter serial number">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specification" class="required">Specification/Modifications</label>
+                        <textarea id="specification" placeholder="Describe the required specifications, modifications, or changes..." required></textarea>
+                    </div>
+                    
+                    <h3 style="color: #8B0000; margin: 30px 0 15px;">Request Details</h3>
+                    
+                    <div class="form-group">
+                        <label for="priority" class="required">Priority</label>
+                        <select id="priority" required>
+                            <option value="">-- Select Priority --</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Urgent">Urgent</option>
+                            <option value="Critical">Critical</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Submit Request</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Success Screen -->
+        <div class="success-screen" id="successScreen">
+            <div class="success-banner">
+                <div class="success-icon">✓</div>
+                <h2>Request Submitted!</h2>
+                <p>Your change request has been successfully submitted.</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>Request Details</h3>
+                <div class="info-row">
+                    <div class="info-label">Request ID:</div>
+                    <div class="info-value" id="resultRequestID"></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Customer:</div>
+                    <div class="info-value" id="resultCustomer"></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Truck Model:</div>
+                    <div class="info-value" id="resultTruck"></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Priority:</div>
+                    <div class="info-value" id="resultPriority"></div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Status:</div>
+                    <div class="info-value" style="color: #f39c12; font-weight: 600;">Submitted - Awaiting Sales Review</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn-new" onclick="location.reload()">Submit Another Request</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwzdBLg7l2rUL3XezF-We82hh9eTPHN7yMVR6xGkA4LNnOKlZ7w91ddMNKX6IZ2fhbCGg/exec';
+        let currentUser = null;
+        let requestData = {};
+        
+        function showLoading() { document.getElementById('loading').classList.add('active'); }
+        function hideLoading() { document.getElementById('loading').classList.remove('active'); }
+        
+        async function apiCall(action, params = {}) {
+            const url = new URL(API_URL);
+            url.searchParams.append('action', action);
+            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            const response = await fetch(url.toString());
+            if (!response.ok) throw new Error('Network error');
+            return await response.json();
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('usernameInput').value;
+            const pin = document.getElementById('pinInput').value;
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.classList.remove('show');
+            
+            showLoading();
+            try {
+                const response = await apiCall('login', { username, pin });
+                if (response.success) {
+                    currentUser = response.data;
+                    if (currentUser.role !== 'Sales Rep') {
+                        errorDiv.textContent = 'Only Sales Reps can submit requests from this form.';
+                        errorDiv.classList.add('show');
+                        hideLoading();
+                        return false;
+                    }
+                    showFormScreen();
+                } else {
+                    errorDiv.textContent = response.message || 'Invalid credentials';
+                    errorDiv.classList.add('show');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Check internet and try again.';
+                errorDiv.classList.add('show');
+            } finally {
+                hideLoading();
+            }
+            return false;
+        }
+        
+        function showFormScreen() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('formScreen').classList.add('active');
+            document.getElementById('loggedInUser').textContent = currentUser.username;
+        }
+        
+        async function handleSubmit(event) {
+            event.preventDefault();
+            
+            requestData = {
+                submittedBy: currentUser.username,
+                customerName: document.getElementById('customerName').value,
+                customerAddress: document.getElementById('customerAddress').value,
+                truckModel: document.getElementById('truckModel').value,
+                serialNumber: document.getElementById('serialNumber').value || 'N/A',
+                specification: document.getElementById('specification').value,
+                priority: document.getElementById('priority').value
+            };
+            
+            showLoading();
+            try {
+                const response = await apiCall('submitRequest', {
+                    data: JSON.stringify(requestData)
+                });
+                
+                if (response.success) {
+                    showSuccessScreen(response.data.requestID);
+                } else {
+                    alert('Error submitting request: ' + response.message);
+                }
+            } catch (error) {
+                alert('Connection error. Please try again. Error: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+            
+            return false;
+        }
+        
+        function showSuccessScreen(requestID) {
+            document.getElementById('formScreen').classList.remove('active');
+            document.getElementById('successScreen').classList.add('active');
+            
+            document.getElementById('resultRequestID').textContent = requestID;
+            document.getElementById('resultCustomer').textContent = requestData.customerName;
+            document.getElementById('resultTruck').textContent = requestData.truckModel;
+            document.getElementById('resultPriority').textContent = requestData.priority;
+        }
+    </script>
+</body>
+</html>

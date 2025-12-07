@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change Request Management - Narrow Aisle</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: transparent; min-height: 100vh; overflow-x: hidden; }
+        
+        /* Loading */
+        .loading { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+        .loading.active { display: flex; }
+        .spinner { width: 60px; height: 60px; border: 4px solid #f3f3f3; border-top: 4px solid #8B0000; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: white; margin-top: 20px; font-size: 1.2em; }
+        
+        /* Login Screen */
+        .login-screen { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 20px; }
+        .login-screen.hidden { display: none; }
+        .login-container { max-width: 500px; width: 100%; }
+        .login-header { background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); color: white; padding: 40px; border-radius: 16px 16px 0 0; text-align: center; border: 1px solid #3d3d3d; border-bottom: none; }
+        .login-header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .login-header .subtitle { color: #b0b0b0; font-size: 1.1em; }
+        .login-box { background: #2d2d2d; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 1px solid #3d3d3d; border-top: none; }
+        
+        /* App Container */
+        .app-container { display: none; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); min-height: 100vh; }
+        .app-container.active { display: block; }
+        
+        /* Header */
+        .app-header { background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%); padding: 20px 30px; border-bottom: 2px solid #8B0000; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+        .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { color: #ffffff; font-size: 1.8em; font-weight: 700; }
+        .header-user { display: flex; align-items: center; gap: 20px; }
+        .user-info { color: #b0b0b0; font-size: 0.9em; }
+        .user-name { color: #ffffff; font-weight: 600; }
+        .btn-logout { padding: 10px 20px; background: #8B0000; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: 600; transition: all 0.3s; }
+        .btn-logout:hover { background: #B22222; transform: translateY(-2px); }
+        
+        /* Navigation */
+        .nav-container { background: #2d2d2d; border-bottom: 1px solid #3d3d3d; }
+        .nav-tabs { max-width: 1400px; margin: 0 auto; display: flex; gap: 0; overflow-x: auto; }
+        .nav-tab { padding: 18px 30px; background: transparent; color: #b0b0b0; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
+        .nav-tab:hover { color: #ffffff; background: rgba(139, 0, 0, 0.1); }
+        .nav-tab.active { color: #ffffff; border-bottom-color: #8B0000; background: rgba(139, 0, 0, 0.2); }
+        
+        /* Main Content */
+        .main-content { max-width: 1400px; margin: 0 auto; padding: 30px; }
+        
+        /* Form Elements */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; color: #e0e0e0; font-weight: 600; margin-bottom: 8px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 2px solid #3d3d3d; border-radius: 8px; background: #1a1a1a; color: #ffffff; font-size: 1em; transition: all 0.3s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #8B0000; box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.2); }
+        
+        .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #8B0000 0%, #B22222 100%); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 0, 0, 0.4); }
+        
+        .error-message { background: #e74c3c; color: white; padding: 12px; border-radius: 8px; margin-bottom: 20px; display: none; text-align: center; }
+        .error-message.show { display: block; }
+        
+        /* Request Cards */
+        .requests-grid { display: grid; gap: 20px; }
+        .request-card { background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 12px; padding: 25px; transition: all 0.3s; cursor: pointer; }
+        .request-card:hover { border-color: #8B0000; box-shadow: 0 4px 16px rgba(139, 0, 0, 0.3); transform: translateY(-2px); }
+        
+        .request-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #3d3d3d; }
+        .request-id { color: #8B0000; font-weight: 700; font-size: 1.2em; }
+        .request-date { color: #b0b0b0; font-size: 0.9em; }
+        
+        .request-info { display: grid; gap: 10px; margin-bottom: 15px; }
+        .info-row { display: flex; gap: 10px; }
+        .info-label { color: #b0b0b0; min-width: 120px; font-weight: 600; }
+        .info-value { color: #ffffff; }
+        
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; font-weight: 600; }
+        .status-submitted { background: #f39c12; color: white; }
+        .status-sales { background: #3498db; color: white; }
+        .status-design { background: #9b59b6; color: white; }
+        .status-shopfloor { background: #e67e22; color: white; }
+        .status-service { background: #1abc9c; color: white; }
+        .status-complete { background: #27ae60; color: white; }
+        .status-rejected { background: #e74c3c; color: white; }
+        
+        .priority-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600; }
+        .priority-normal { background: #3498db; color: white; }
+        .priority-urgent { background: #f39c12; color: white; }
+        .priority-critical { background: #e74c3c; color: white; }
+        
+        .request-actions { display: flex; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #3d3d3d; }
+        .btn-approve { flex: 1; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-approve:hover { background: #229954; transform: translateY(-2px); }
+        .btn-reject { flex: 1; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-reject:hover { background: #c0392b; transform: translateY(-2px); }
+        .btn-view { flex: 1; padding: 10px; background: #3498db; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-view:hover { background: #2980b9; transform: translateY(-2px); }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: #2d2d2d; border-radius: 16px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid #3d3d3d; }
+        .modal-header { padding: 25px; border-bottom: 1px solid #3d3d3d; display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { color: #ffffff; font-size: 1.5em; font-weight: 700; }
+        .modal-close { background: none; border: none; color: #b0b0b0; font-size: 1.5em; cursor: pointer; }
+        .modal-close:hover { color: #ffffff; }
+        .modal-body { padding: 25px; }
+        
+        .detail-section { margin-bottom: 25px; }
+        .detail-section h3 { color: #8B0000; margin-bottom: 15px; font-size: 1.2em; }
+        .detail-grid { display: grid; gap: 15px; }
+        .detail-row { display: grid; grid-template-columns: 150px 1fr; gap: 15px; padding: 12px; background: #1a1a1a; border-radius: 8px; }
+        .detail-label { color: #b0b0b0; font-weight: 600; }
+        .detail-value { color: #ffffff; }
+        
+        .timeline { position: relative; padding-left: 30px; }
+        .timeline-item { position: relative; padding-bottom: 20px; }
+        .timeline-item::before { content: ''; position: absolute; left: -22px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: #8B0000; }
+        .timeline-item::after { content: ''; position: absolute; left: -17px; top: 20px; width: 2px; height: calc(100% - 12px); background: #3d3d3d; }
+        .timeline-item:last-child::after { display: none; }
+        .timeline-stage { color: #8B0000; font-weight: 600; margin-bottom: 5px; }
+        .timeline-user { color: #b0b0b0; font-size: 0.9em; }
+        .timeline-date { color: #7f8c8d; font-size: 0.85em; }
+        .timeline-comments { color: #ffffff; margin-top: 8px; padding: 10px; background: #1a1a1a; border-radius: 6px; }
+        
+        .comment-box { margin-top: 20px; }
+        .comment-box textarea { width: 100%; min-height: 100px; padding: 12px; border: 2px solid #3d3d3d; border-radius: 8px; background: #1a1a1a; color: #ffffff; font-family: inherit; resize: vertical; }
+        .comment-box textarea:focus { outline: none; border-color: #8B0000; }
+        
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-modal-approve { flex: 1; padding: 14px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-modal-approve:hover { background: #229954; }
+        .btn-modal-reject { flex: 1; padding: 14px; background: #e74c3c; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-modal-reject:hover { background: #c0392b; }
+        .btn-modal-close { flex: 1; padding: 14px; background: #7f8c8d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-modal-close:hover { background: #6c7a89; }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: #b0b0b0; }
+        .empty-state-icon { font-size: 4em; margin-bottom: 20px; opacity: 0.5; }
+        .empty-state-text { font-size: 1.2em; }
+        
+        /* Toast Notifications */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; }
+        .toast { background: #2d2d2d; color: white; padding: 16px 24px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); border-left: 4px solid #8B0000; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast.success { border-left-color: #27ae60; }
+        .toast.error { border-left-color: #e74c3c; }
+        .toast.info { border-left-color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+    
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>🔧 Change Requests</h1>
+                <p class="subtitle">Management System</p>
+            </div>
+            <div class="login-box">
+                <div class="error-message" id="loginError"></div>
+                <form id="loginForm" onsubmit="return handleLogin(event)">
+                    <div class="form-group">
+                        <label for="usernameInput">Username</label>
+                        <input type="text" id="usernameInput" placeholder="Enter your username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pinInput">PIN Code</label>
+                        <input type="password" id="pinInput" placeholder="Enter your PIN" required maxlength="4" pattern="[0-9]{4}">
+                    </div>
+                    <button type="submit" class="btn-primary">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- App Container -->
+    <div class="app-container" id="appContainer">
+        <div class="app-header">
+            <div class="header-content">
+                <div class="header-title">🔧 Change Request Management</div>
+                <div class="header-user">
+                    <div class="user-info">
+                        Logged in as: <span class="user-name" id="userName"></span>
+                    </div>
+                    <button class="btn-logout" onclick="handleLogout()">Logout</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="nav-container">
+            <div class="nav-tabs" id="navTabs"></div>
+        </div>
+        
+        <div class="main-content" id="mainContent"></div>
+    </div>
+    
+    <!-- Request Detail Modal -->
+    <div class="modal" id="requestModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Request Details</div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwzdBLg7l2rUL3XezF-We82hh9eTPHN7yMVR6xGkA4LNnOKlZ7w91ddMNKX6IZ2fhbCGg/exec';
+        let currentUser = null;
+        let currentRequests = [];
+        let selectedRequest = null;
+        
+        function showLoading() { document.getElementById('loading').classList.add('active'); }
+        function hideLoading() { document.getElementById('loading').classList.remove('active'); }
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        async function apiCall(action, params = {}) {
+            const url = new URL(API_URL);
+            url.searchParams.append('action', action);
+            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            const response = await fetch(url.toString());
+            if (!response.ok) throw new Error('Network error');
+            return await response.json();
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('usernameInput').value;
+            const pin = document.getElementById('pinInput').value;
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.classList.remove('show');
+            
+            showLoading();
+            try {
+                const response = await apiCall('login', { username, pin });
+                if (response.success) {
+                    currentUser = response.data;
+                    showApp();
+                } else {
+                    errorDiv.textContent = response.message || 'Invalid credentials';
+                    errorDiv.classList.add('show');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Check internet and try again.';
+                errorDiv.classList.add('show');
+            } finally {
+                hideLoading();
+            }
+            return false;
+        }
+        
+        function showApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appContainer').classList.add('active');
+            document.getElementById('userName').textContent = currentUser.username;
+            setupNavigation();
+            loadDefaultView();
+        }
+        
+        function setupNavigation() {
+            const navTabs = document.getElementById('navTabs');
+            navTabs.innerHTML = '';
+            
+            let tabs = [];
+            if (currentUser.role === 'Sales Rep') {
+                tabs = [
+                    { id: 'myRequests', label: '📝 My Requests' }
+                ];
+            } else if (currentUser.role === 'Management') {
+                tabs = [
+                    { id: 'allRequests', label: '📊 All Requests' },
+                    { id: 'pendingApprovals', label: '⏳ Pending Approvals' }
+                ];
+            } else {
+                tabs = [
+                    { id: 'pendingApprovals', label: '⏳ Pending Approvals' },
+                    { id: 'myRequests', label: '📝 My Requests' }
+                ];
+            }
+            
+            tabs.forEach((tab, index) => {
+                const button = document.createElement('button');
+                button.className = 'nav-tab' + (index === 0 ? ' active' : '');
+                button.textContent = tab.label;
+                button.onclick = () => switchTab(tab.id, button);
+                navTabs.appendChild(button);
+            });
+        }
+        
+        function switchTab(tabId, button) {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            button.classList.add('active');
+            
+            switch(tabId) {
+                case 'myRequests': loadMyRequests(); break;
+                case 'pendingApprovals': loadPendingApprovals(); break;
+                case 'allRequests': loadAllRequests(); break;
+            }
+        }
+        
+        function loadDefaultView() {
+            if (currentUser.role === 'Sales Rep') {
+                loadMyRequests();
+            } else if (currentUser.role === 'Management') {
+                loadAllRequests();
+            } else {
+                loadPendingApprovals();
+            }
+        }
+        
+        async function loadMyRequests() {
+            showLoading();
+            try {
+                const response = await apiCall('getMyRequests', { username: currentUser.username });
+                if (response.success) {
+                    renderRequests(response.data, 'my');
+                }
+            } catch (error) {
+                showToast('Error loading requests', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function loadPendingApprovals() {
+            showLoading();
+            try {
+                const response = await apiCall('getPendingApprovals', { department: currentUser.department });
+                if (response.success) {
+                    renderRequests(response.data, 'pending');
+                }
+            } catch (error) {
+                showToast('Error loading approvals', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function loadAllRequests() {
+            showLoading();
+            try {
+                const response = await apiCall('getAllRequests');
+                if (response.success) {
+                    renderRequests(response.data, 'all');
+                }
+            } catch (error) {
+                showToast('Error loading requests', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function renderRequests(requests, viewType) {
+            currentRequests = requests;
+            const content = document.getElementById('mainContent');
+            
+            if (requests.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">No requests found</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="requests-grid">';
+            requests.forEach(req => {
+                const statusClass = getStatusClass(req.status);
+                const priorityClass = getPriorityClass(req.priority);
+                
+                html += `
+                    <div class="request-card" onclick="viewRequestDetails('${req.requestID}')">
+                        <div class="request-header">
+                            <div>
+                                <div class="request-id">${req.requestID}</div>
+                                <div class="request-date">${formatDate(req.dateSubmitted)}</div>
+                            </div>
+                            <span class="status-badge ${statusClass}">${req.currentStage}</span>
+                        </div>
+                        <div class="request-info">
+                            <div class="info-row">
+                                <span class="info-label">Customer:</span>
+                                <span class="info-value">${req.customerName}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Truck Model:</span>
+                                <span class="info-value">${req.truckModel}</span>
+                            </div>
+                            ${viewType !== 'my' ? `
+                            <div class="info-row">
+                                <span class="info-label">Submitted By:</span>
+                                <span class="info-value">${req.submittedBy}</span>
+                            </div>
+                            ` : ''}
+                            <div class="info-row">
+                                <span class="info-label">Priority:</span>
+                                <span class="priority-badge ${priorityClass}">${req.priority}</span>
+                            </div>
+                        </div>
+                        ${viewType === 'pending' ? `
+                        <div class="request-actions">
+                            <button class="btn-approve" onclick="event.stopPropagation(); approveRequest('${req.requestID}')">✓ Approve</button>
+                            <button class="btn-reject" onclick="event.stopPropagation(); rejectRequest('${req.requestID}')">✕ Reject</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            content.innerHTML = html;
+        }
+        
+        async function viewRequestDetails(requestID) {
+            showLoading();
+            try {
+                const response = await apiCall('getRequestDetails', { requestID });
+                if (response.success) {
+                    selectedRequest = response.data;
+                    showRequestModal();
+                }
+            } catch (error) {
+                showToast('Error loading details', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function showRequestModal() {
+            const req = selectedRequest;
+            const modal = document.getElementById('requestModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            document.getElementById('modalTitle').textContent = req.requestID;
+            
+            let html = `
+                <div class="detail-section">
+                    <h3>Customer Information</h3>
+                    <div class="detail-grid">
+                        <div class="detail-row">
+                            <div class="detail-label">Customer Name:</div>
+                            <div class="detail-value">${req.customerName}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Address:</div>
+                            <div class="detail-value">${req.customerAddress}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Truck Information</h3>
+                    <div class="detail-grid">
+                        <div class="detail-row">
+                            <div class="detail-label">Model:</div>
+                            <div class="detail-value">${req.truckModel}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Serial Number:</div>
+                            <div class="detail-value">${req.serialNumber}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Specification:</div>
+                            <div class="detail-value">${req.specification}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Request Details</h3>
+                    <div class="detail-grid">
+                        <div class="detail-row">
+                            <div class="detail-label">Priority:</div>
+                            <div class="detail-value"><span class="priority-badge ${getPriorityClass(req.priority)}">${req.priority}</span></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Status:</div>
+                            <div class="detail-value"><span class="status-badge ${getStatusClass(req.status)}">${req.currentStage}</span></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Submitted By:</div>
+                            <div class="detail-value">${req.submittedBy}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Date Submitted:</div>
+                            <div class="detail-value">${formatDate(req.dateSubmitted)}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Approval Timeline</h3>
+                    <div class="timeline">
+            `;
+            
+            // Sales approval
+            if (req.salesApproved) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Sales Department ${req.salesApproved === 'Yes' ? '✓ Approved' : '✗ Rejected'}</div>
+                        <div class="timeline-user">By ${req.salesApprovedBy}</div>
+                        <div class="timeline-date">${formatDate(req.salesApprovedDate)}</div>
+                        ${req.salesComments ? `<div class="timeline-comments">${req.salesComments}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Design approval
+            if (req.designApproved) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Design Department ${req.designApproved === 'Yes' ? '✓ Approved' : '✗ Rejected'}</div>
+                        <div class="timeline-user">By ${req.designApprovedBy}</div>
+                        <div class="timeline-date">${formatDate(req.designApprovedDate)}</div>
+                        ${req.designComments ? `<div class="timeline-comments">${req.designComments}</div>` : ''}
+                        ${req.workInstructionPDF ? `<div class="timeline-comments">📄 Work Instruction: ${req.workInstructionPDF}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Shop floor
+            if (req.shopFloorComplete) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Shop Floor ✓ Complete</div>
+                        <div class="timeline-user">By ${req.shopFloorCompleteBy}</div>
+                        <div class="timeline-date">${formatDate(req.shopFloorCompleteDate)}</div>
+                        ${req.shopFloorComments ? `<div class="timeline-comments">${req.shopFloorComments}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Service
+            if (req.serviceComplete) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Service ✓ Complete</div>
+                        <div class="timeline-user">By ${req.serviceCompleteBy}</div>
+                        <div class="timeline-date">${formatDate(req.serviceCompleteDate)}</div>
+                        ${req.serviceComments ? `<div class="timeline-comments">${req.serviceComments}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            // Show approve/reject buttons if pending for this user's department
+            const canAction = canUserAction(req);
+            if (canAction) {
+                html += `
+                    <div class="comment-box">
+                        <label style="color: #e0e0e0; font-weight: 600; margin-bottom: 8px; display: block;">Add Comments:</label>
+                        <textarea id="modalComments" placeholder="Enter your comments..."></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn-modal-approve" onclick="confirmApprove()">✓ Approve & Progress</button>
+                        <button class="btn-modal-reject" onclick="confirmReject()">✕ Reject Request</button>
+                        <button class="btn-modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="modal-actions">
+                        <button class="btn-modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                `;
+            }
+            
+            modalBody.innerHTML = html;
+            modal.classList.add('active');
+        }
+        
+        function canUserAction(req) {
+            if (currentUser.department === 'Sales' && req.currentStage === 'Sales Review') return true;
+            if (currentUser.department === 'Design' && req.currentStage === 'Design Review') return true;
+            if (currentUser.department === 'Shop Floor' && req.currentStage === 'Shop Floor') return true;
+            if (currentUser.department === 'Service' && req.currentStage === 'Service Install') return true;
+            return false;
+        }
+        
+        function closeModal() {
+            document.getElementById('requestModal').classList.remove('active');
+            selectedRequest = null;
+        }
+        
+        async function confirmApprove() {
+            const comments = document.getElementById('modalComments').value;
+            
+            if (!confirm('Are you sure you want to approve this request?')) return;
+            
+            showLoading();
+            closeModal();
+            
+            try {
+                const response = await apiCall('approveRequest', {
+                    requestID: selectedRequest.requestID,
+                    department: currentUser.department,
+                    approvedBy: currentUser.username,
+                    comments: comments
+                });
+                
+                if (response.success) {
+                    showToast('Request approved successfully!', 'success');
+                    loadPendingApprovals();
+                } else {
+                    showToast('Error approving request', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function confirmReject() {
+            const comments = document.getElementById('modalComments').value;
+            
+            if (!comments.trim()) {
+                alert('Please provide a reason for rejection');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to reject this request?')) return;
+            
+            showLoading();
+            closeModal();
+            
+            try {
+                const response = await apiCall('rejectRequest', {
+                    requestID: selectedRequest.requestID,
+                    department: currentUser.department,
+                    rejectedBy: currentUser.username,
+                    reason: comments
+                });
+                
+                if (response.success) {
+                    showToast('Request rejected', 'info');
+                    loadPendingApprovals();
+                } else {
+                    showToast('Error rejecting request', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function approveRequest(requestID) {
+            viewRequestDetails(requestID);
+        }
+        
+        function rejectRequest(requestID) {
+            viewRequestDetails(requestID);
+        }
+        
+        function getStatusClass(status) {
+            if (!status) return 'status-submitted';
+            if (status.includes('Sales')) return 'status-sales';
+            if (status.includes('Design')) return 'status-design';
+            if (status.includes('Shop')) return 'status-shopfloor';
+            if (status.includes('Service')) return 'status-service';
+            if (status.includes('Complete')) return 'status-complete';
+            if (status.includes('Rejected')) return 'status-rejected';
+            return 'status-submitted';
+        }
+        
+        function getPriorityClass(priority) {
+            if (priority === 'Critical') return 'priority-critical';
+            if (priority === 'Urgent') return 'priority-urgent';
+            return 'priority-normal';
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-GB', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                currentUser = null;
+                currentRequests = [];
+                document.getElementById('appContainer').classList.remove('active');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('loginForm').reset();
+            }
+        }
+        
+        console.log('🔧 Change Request Management System Ready!');
+    </script>
+</body>
+</html>
