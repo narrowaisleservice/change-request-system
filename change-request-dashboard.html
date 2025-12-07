@@ -620,8 +620,13 @@
             if (!confirm('Are you sure you want to approve this request?')) return;
             
             console.log('Approve confirmed, starting...');
-            console.log('Selected request:', selectedRequest);
-            console.log('Current user:', currentUser);
+            
+            // Save request data BEFORE closing modal
+            const requestID = selectedRequest.requestID;
+            const department = currentUser.department;
+            const approvedBy = currentUser.username;
+            
+            console.log('Request data:', { requestID, department, approvedBy, comments });
             
             showLoading();
             closeModal();
@@ -629,9 +634,9 @@
             try {
                 console.log('Calling approveRequest API...');
                 const response = await apiCall('approveRequest', {
-                    requestID: selectedRequest.requestID,
-                    department: currentUser.department,
-                    approvedBy: currentUser.username,
+                    requestID: requestID,
+                    department: department,
+                    approvedBy: approvedBy,
                     comments: comments
                 });
                 
@@ -661,14 +666,19 @@
             
             if (!confirm('Are you sure you want to reject this request?')) return;
             
+            // Save request data BEFORE closing modal
+            const requestID = selectedRequest.requestID;
+            const department = currentUser.department;
+            const rejectedBy = currentUser.username;
+            
             showLoading();
             closeModal();
             
             try {
                 const response = await apiCall('rejectRequest', {
-                    requestID: selectedRequest.requestID,
-                    department: currentUser.department,
-                    rejectedBy: currentUser.username,
+                    requestID: requestID,
+                    department: department,
+                    rejectedBy: rejectedBy,
                     reason: comments
                 });
                 
@@ -681,6 +691,9 @@
             } catch (error) {
                 showToast('Connection error', 'error');
             } finally {
+                hideLoading();
+            }
+        }
                 hideLoading();
             }
         }
