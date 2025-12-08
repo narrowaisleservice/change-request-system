@@ -86,34 +86,6 @@
             .filters-grid { grid-template-columns: 1fr; }
         }
         
-        /* Phase 2 - Heatmap */
-        .heatmap-card { background: #2d2d2d; padding: 25px; border-radius: 12px; border: 1px solid #3d3d3d; margin-bottom: 30px; }
-        .heatmap-card h3 { color: #ffffff; margin-bottom: 20px; font-size: 1.3em; display: flex; align-items: center; gap: 10px; }
-        .heatmap-subtitle { color: #b0b0b0; font-size: 0.85em; margin-bottom: 20px; }
-        .heatmap-grid { display: grid; gap: 15px; }
-        .heatmap-row { display: grid; grid-template-columns: 150px 1fr 120px; gap: 15px; align-items: center; padding: 15px; background: #1a1a1a; border-radius: 8px; transition: all 0.3s; }
-        .heatmap-row:hover { background: #252525; }
-        .heatmap-row.clickable { cursor: pointer; }
-        .heatmap-label { color: #e0e0e0; font-weight: 600; }
-        .heatmap-bar-container { background: #0d0d0d; border-radius: 8px; height: 35px; position: relative; overflow: hidden; }
-        .heatmap-bar { height: 100%; border-radius: 8px; transition: width 0.8s; display: flex; align-items: center; padding-left: 10px; color: white; font-weight: 600; font-size: 0.9em; }
-        .heatmap-bar.low { background: linear-gradient(90deg, #27ae60, #2ecc71); }
-        .heatmap-bar.medium { background: linear-gradient(90deg, #f39c12, #f1c40f); }
-        .heatmap-bar.high { background: linear-gradient(90deg, #e74c3c, #c0392b); }
-        .heatmap-bar.customer { background: linear-gradient(90deg, #8B0000, #B22222); }
-        .heatmap-value { color: #ffffff; font-weight: 700; text-align: right; display: flex; flex-direction: column; }
-        .heatmap-value-main { font-size: 1.2em; }
-        .heatmap-value-sub { font-size: 0.8em; color: #b0b0b0; }
-        
-        /* Phase 2 - Customer Modal */
-        .customer-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
-        .customer-stat { background: #1a1a1a; padding: 15px; border-radius: 8px; text-align: center; }
-        .customer-stat-value { font-size: 2em; color: #8B0000; font-weight: 700; }
-        .customer-stat-label { color: #b0b0b0; font-size: 0.9em; margin-top: 5px; }
-        .customer-requests-list { max-height: 400px; overflow-y: auto; }
-        .customer-request-item { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; }
-        .customer-request-item:hover { background: #252525; border-left: 4px solid #8B0000; }
-        
         /* Form Elements */
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; color: #e0e0e0; font-weight: 600; margin-bottom: 8px; }
@@ -284,8 +256,6 @@
         let selectedRequest = null;
         let statusChart = null;
         let priorityChart = null;
-        let timelineChart = null;
-        let departmentChart = null;
         
         // Filter state
         let filters = {
@@ -621,7 +591,6 @@
         
         function buildChartsSection() {
             return `
-                ${buildHeatmap()}
                 <div class="charts-section">
                     <div class="chart-card">
                         <h3>📊 Requests by Status</h3>
@@ -636,128 +605,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="charts-section">
-                    <div class="chart-card">
-                        <h3>📈 Requests Timeline</h3>
-                        <div class="chart-container">
-                            <canvas id="timelineChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-card">
-                        <h3>🏢 Department Workload</h3>
-                        <div class="chart-container">
-                            <canvas id="departmentChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                ${buildTopCustomers()}
-            `;
-        }
-        
-        function buildHeatmap() {
-            const deptData = calculateDepartmentMetrics(allRequests);
-            const maxAvgTime = Math.max(...deptData.map(d => d.avgTime), 1);
-            
-            return `
-                <div class="heatmap-card">
-                    <h3>🔥 Department Performance Analysis</h3>
-                    <div class="heatmap-subtitle">Average processing time and current workload by department</div>
-                    <div class="heatmap-grid">
-                        ${deptData.map(dept => {
-                            const percentage = (dept.avgTime / maxAvgTime) * 100;
-                            const barClass = dept.avgTime > 2 ? 'high' : dept.avgTime > 1 ? 'medium' : 'low';
-                            return `
-                                <div class="heatmap-row">
-                                    <div class="heatmap-label">${dept.name}</div>
-                                    <div class="heatmap-bar-container">
-                                        <div class="heatmap-bar ${barClass}" style="width: ${percentage}%">
-                                            ${dept.avgTime.toFixed(1)} days avg
-                                        </div>
-                                    </div>
-                                    <div class="heatmap-value">
-                                        <span class="heatmap-value-main">${dept.pending}</span>
-                                        <span class="heatmap-value-sub">pending</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        function calculateDepartmentMetrics(requests) {
-            const departments = ['Sales', 'Design', 'Shop Floor', 'Service'];
-            return departments.map(dept => {
-                const deptRequests = requests.filter(r => {
-                    if (dept === 'Sales') return r.currentStage.includes('Sales');
-                    if (dept === 'Design') return r.currentStage.includes('Design');
-                    if (dept === 'Shop Floor') return r.currentStage.includes('Shop');
-                    if (dept === 'Service') return r.currentStage.includes('Service');
-                    return false;
-                });
-                
-                const pending = deptRequests.length;
-                let avgTime = 0;
-                if (pending > 0) {
-                    const now = new Date();
-                    const totalDays = deptRequests.reduce((sum, req) => {
-                        const submitted = new Date(req.dateSubmitted);
-                        const days = (now - submitted) / (1000 * 60 * 60 * 24);
-                        return sum + days;
-                    }, 0);
-                    avgTime = totalDays / pending;
-                }
-                
-                return { name: dept, pending, avgTime };
-            });
-        }
-        
-        function buildTopCustomers() {
-            const customerCounts = {};
-            allRequests.forEach(req => {
-                customerCounts[req.customerName] = (customerCounts[req.customerName] || 0) + 1;
-            });
-            
-            const topCustomers = Object.entries(customerCounts)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-            
-            if (topCustomers.length === 0) return '';
-            
-            return `
-                <div class="heatmap-card">
-                    <h3>⭐ Top Customers</h3>
-                    <div class="heatmap-subtitle">Customers with most change requests - click to view history</div>
-                    <div class="heatmap-grid">
-                        ${topCustomers.map(([customer, count]) => {
-                            const maxCount = topCustomers[0][1];
-                            const percentage = (count / maxCount) * 100;
-                            return `
-                                <div class="heatmap-row clickable" onclick="viewCustomerHistory('${customer.replace(/'/g, "\\'")}')">
-                                    <div class="heatmap-label">${customer}</div>
-                                    <div class="heatmap-bar-container">
-                                        <div class="heatmap-bar customer" style="width: ${percentage}%">
-                                            ${count} request${count > 1 ? 's' : ''}
-                                        </div>
-                                    </div>
-                                    <div class="heatmap-value">
-                                        <span class="heatmap-value-main">👁️</span>
-                                        <span class="heatmap-value-sub">view</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
             `;
         }
         
         function initializeCharts(requests) {
             if (statusChart) statusChart.destroy();
             if (priorityChart) priorityChart.destroy();
-            if (timelineChart) timelineChart.destroy();
-            if (departmentChart) departmentChart.destroy();
             
             const statusCounts = { 'Sales Review': 0, 'Design Review': 0, 'Shop Floor': 0, 'Service Install': 0, 'Complete': 0, 'Rejected': 0 };
             requests.forEach(req => {
@@ -795,87 +648,6 @@
                     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: '#ffffff', stepSize: 1 }, grid: { color: '#3d3d3d' } }, x: { ticks: { color: '#ffffff' }, grid: { display: false } } }, plugins: { legend: { display: false } } }
                 });
             }
-            
-            // Timeline Chart
-            const timelineData = generateTimelineData(requests);
-            const timelineCtx = document.getElementById('timelineChart');
-            if (timelineCtx) {
-                timelineChart = new Chart(timelineCtx, {
-                    type: 'line',
-                    data: {
-                        labels: timelineData.labels,
-                        datasets: [{
-                            label: 'Requests Submitted',
-                            data: timelineData.data,
-                            borderColor: '#8B0000',
-                            backgroundColor: 'rgba(139, 0, 0, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: { beginAtZero: true, ticks: { color: '#ffffff', stepSize: 1 }, grid: { color: '#3d3d3d' } },
-                            x: { ticks: { color: '#ffffff' }, grid: { color: '#3d3d3d' } }
-                        },
-                        plugins: { legend: { labels: { color: '#ffffff' } } }
-                    }
-                });
-            }
-            
-            // Department Workload Chart
-            const deptData = calculateDepartmentMetrics(requests);
-            const departmentCtx = document.getElementById('departmentChart');
-            if (departmentCtx) {
-                departmentChart = new Chart(departmentCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: deptData.map(d => d.name),
-                        datasets: [{
-                            label: 'Pending Requests',
-                            data: deptData.map(d => d.pending),
-                            backgroundColor: ['#3498db', '#9b59b6', '#e67e22', '#1abc9c'],
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { beginAtZero: true, ticks: { color: '#ffffff', stepSize: 1 }, grid: { color: '#3d3d3d' } },
-                            y: { ticks: { color: '#ffffff' }, grid: { display: false } }
-                        },
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            }
-        }
-        
-        function generateTimelineData(requests) {
-            const weeks = {};
-            const now = new Date();
-            
-            for (let i = 7; i >= 0; i--) {
-                const weekStart = new Date(now);
-                weekStart.setDate(weekStart.getDate() - (i * 7));
-                const weekLabel = `Week ${8-i}`;
-                weeks[weekLabel] = 0;
-            }
-            
-            requests.forEach(req => {
-                const reqDate = new Date(req.dateSubmitted);
-                const daysDiff = Math.floor((now - reqDate) / (1000 * 60 * 60 * 24));
-                const weekIndex = Math.min(7, Math.floor(daysDiff / 7));
-                const weekLabel = `Week ${8 - weekIndex}`;
-                if (weeks[weekLabel] !== undefined) weeks[weekLabel]++;
-            });
-            
-            return { labels: Object.keys(weeks), data: Object.values(weeks) };
         }
         
         function attachFilterListeners() {
@@ -937,4 +709,273 @@
                     <h3>Customer Information</h3>
                     <div class="detail-grid">
                         <div class="detail-row">
- 
+                            <div class="detail-label">Customer Name:</div>
+                            <div class="detail-value">${req.customerName}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Address:</div>
+                            <div class="detail-value">${req.customerAddress}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Truck Information</h3>
+                    <div class="detail-grid">
+                        <div class="detail-row">
+                            <div class="detail-label">Model:</div>
+                            <div class="detail-value">${req.truckModel}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Serial Number:</div>
+                            <div class="detail-value">${req.serialNumber}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Specification:</div>
+                            <div class="detail-value">${req.specification}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Request Details</h3>
+                    <div class="detail-grid">
+                        <div class="detail-row">
+                            <div class="detail-label">Priority:</div>
+                            <div class="detail-value"><span class="priority-badge ${getPriorityClass(req.priority)}">${req.priority}</span></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Status:</div>
+                            <div class="detail-value"><span class="status-badge ${getStatusClass(req.status)}">${req.currentStage}</span></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Submitted By:</div>
+                            <div class="detail-value">${req.submittedBy}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Date Submitted:</div>
+                            <div class="detail-value">${formatDate(req.dateSubmitted)}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-section">
+                    <h3>Approval Timeline</h3>
+                    <div class="timeline">
+            `;
+            
+            // Sales approval
+            if (req.salesApproved) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Sales Department ${req.salesApproved === 'Yes' ? '✓ Approved' : '✗ Rejected'}</div>
+                        <div class="timeline-user">By ${req.salesApprovedBy}</div>
+                        <div class="timeline-date">${formatDate(req.salesApprovedDate)}</div>
+                        ${req.salesComments ? `<div class="timeline-comments">${req.salesComments}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Design approval
+            if (req.designApproved) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Design Department ${req.designApproved === 'Yes' ? '✓ Approved' : '✗ Rejected'}</div>
+                        <div class="timeline-user">By ${req.designApprovedBy}</div>
+                        <div class="timeline-date">${formatDate(req.designApprovedDate)}</div>
+                        ${req.designComments ? `<div class="timeline-comments">${req.designComments}</div>` : ''}
+                        ${req.workInstructionPDF ? `<div class="timeline-comments">📄 Work Instruction: ${req.workInstructionPDF}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Shop floor
+            if (req.shopFloorComplete) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Shop Floor ✓ Complete</div>
+                        <div class="timeline-user">By ${req.shopFloorCompleteBy}</div>
+                        <div class="timeline-date">${formatDate(req.shopFloorCompleteDate)}</div>
+                        ${req.shopFloorComments ? `<div class="timeline-comments">${req.shopFloorComments}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Service
+            if (req.serviceComplete) {
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-stage">Service ✓ Complete</div>
+                        <div class="timeline-user">By ${req.serviceCompleteBy}</div>
+                        <div class="timeline-date">${formatDate(req.serviceCompleteDate)}</div>
+                        ${req.serviceComments ? `<div class="timeline-comments">${req.serviceComments}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            // Show approve/reject buttons if pending for this user's department
+            const canAction = canUserAction(req);
+            if (canAction) {
+                html += `
+                    <div class="comment-box">
+                        <label style="color: #e0e0e0; font-weight: 600; margin-bottom: 8px; display: block;">Add Comments:</label>
+                        <textarea id="modalComments" placeholder="Enter your comments..."></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn-modal-approve" onclick="confirmApprove()">✓ Approve & Progress</button>
+                        <button class="btn-modal-reject" onclick="confirmReject()">✕ Reject Request</button>
+                        <button class="btn-modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="modal-actions">
+                        <button class="btn-modal-close" onclick="closeModal()">Close</button>
+                    </div>
+                `;
+            }
+            
+            modalBody.innerHTML = html;
+            modal.classList.add('active');
+        }
+        
+        function canUserAction(req) {
+            if (currentUser.department === 'Sales' && req.currentStage === 'Sales Review') return true;
+            if (currentUser.department === 'Design' && req.currentStage === 'Design Review') return true;
+            if (currentUser.department === 'Shop Floor' && req.currentStage === 'Shop Floor') return true;
+            if (currentUser.department === 'Service' && req.currentStage === 'Service Install') return true;
+            return false;
+        }
+        
+        function closeModal() {
+            document.getElementById('requestModal').classList.remove('active');
+            selectedRequest = null;
+        }
+        
+        async function confirmApprove() {
+            const comments = document.getElementById('modalComments').value;
+            
+            if (!confirm('Are you sure you want to approve this request?')) return;
+            
+            const requestID = selectedRequest.requestID;
+            const department = currentUser.department;
+            const approvedBy = currentUser.username;
+            
+            showLoading();
+            closeModal();
+            
+            try {
+                const response = await apiCall('approveRequest', {
+                    requestID: requestID,
+                    department: department,
+                    approvedBy: approvedBy,
+                    comments: comments
+                });
+                
+                if (response.success) {
+                    showToast('Request approved successfully!', 'success');
+                    loadPendingApprovals();
+                } else {
+                    showToast('Error approving request: ' + response.message, 'error');
+                }
+            } catch (error) {
+                showToast('Connection error: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function confirmReject() {
+            const comments = document.getElementById('modalComments').value;
+            
+            if (!comments.trim()) {
+                alert('Please provide a reason for rejection');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to reject this request?')) return;
+            
+            const requestID = selectedRequest.requestID;
+            const department = currentUser.department;
+            const rejectedBy = currentUser.username;
+            
+            showLoading();
+            closeModal();
+            
+            try {
+                const response = await apiCall('rejectRequest', {
+                    requestID: requestID,
+                    department: department,
+                    rejectedBy: rejectedBy,
+                    reason: comments
+                });
+                
+                if (response.success) {
+                    showToast('Request rejected', 'info');
+                    loadPendingApprovals();
+                } else {
+                    showToast('Error rejecting request', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function approveRequest(requestID) {
+            viewRequestDetails(requestID);
+        }
+        
+        function rejectRequest(requestID) {
+            viewRequestDetails(requestID);
+        }
+        
+        function getStatusClass(status) {
+            if (!status) return 'status-submitted';
+            if (status.includes('Sales')) return 'status-sales';
+            if (status.includes('Design')) return 'status-design';
+            if (status.includes('Shop')) return 'status-shopfloor';
+            if (status.includes('Service')) return 'status-service';
+            if (status.includes('Complete')) return 'status-complete';
+            if (status.includes('Rejected')) return 'status-rejected';
+            return 'status-submitted';
+        }
+        
+        function getPriorityClass(priority) {
+            if (priority === 'Critical') return 'priority-critical';
+            if (priority === 'Urgent') return 'priority-urgent';
+            return 'priority-normal';
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-GB', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                currentUser = null;
+                currentRequests = [];
+                document.getElementById('appContainer').classList.remove('active');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('loginForm').reset();
+            }
+        }
+        
+        console.log('🔧 Change Request Management System Ready!');
+    </script>
+</body>
+</html>
